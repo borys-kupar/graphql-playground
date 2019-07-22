@@ -2,6 +2,50 @@ import React, { Component } from 'react'
 import '../styles/Chat.css'
 import ChatInput from './ChatInput'
 import ChatMessages from './ChatMessages'
+import { graphql, compose } from 'react-apollo'
+import qql from 'graphql-tag'
+
+const MSG_QUERY = qql`
+  query MessageQuery {
+    allMessages(last: 100) {
+      id
+      text
+      createdAt
+    }
+  }
+`
+
+const CREATE_MSG_QUERY = qql`
+  mutation CreateMessageMutation($text: String!, $sentById: ID! ) {
+    createMessage(text: $text, sentById: $sentById) {
+      id
+      text
+      createdAt
+      sentBy {
+        id
+        name
+      }
+    }
+  }
+`
+
+const MSG_SUBSCRIPTION = qql`
+  subscription NewMessageSubscription {
+    Message(filter:{
+      mutation_in: [CREATED]
+    }) {
+      node {
+        id
+        text
+        createdAt
+        sentBy {
+          id
+          name
+        }
+      }
+    }
+  }
+`
 
 class Chat extends Component {
 
@@ -10,11 +54,25 @@ class Chat extends Component {
     allMessages: []
   }
 
+  componentDidMount() {
+    this.createMessageSubscription = this.props.messageQuery.subscribeToMore({
+      document: MSG_SUBSCRIPTION,
+      updateQuery: (previousState, {subscriptionData}) => {
+        console.log(`Received: ${subscriptionData.Message.node.text}`)
+        const newMessage = subscriptionData.Message.node
+        const messages = previousState.allMessages.concat([newMessage])
+        return {
+          allMessages: messages
+        }
+      }
+    })
+  }
+
   render() {
     return (
       <div className='Chat'>
         <ChatMessages
-          messages={this.state.allMessages || []}
+          messages={this.props.messageQuery.allMessages || []}
           endRef={this._endRef}
         />
         <ChatInput
@@ -29,9 +87,12 @@ class Chat extends Component {
 
   _onSend = () => {
     console.log(`Send: ${this.state.message}`)
-    const newMessages = this.state.allMessages
-    newMessages.push({ text: this.state.message })
-    this.setState({allMessages: newMessages})
+    this.props.createMessageMutation({
+      variables: {
+        text: this.state.message,
+        sentById: this.props.userId
+      }
+    })
   }
 
   _resetText = () => {
@@ -56,4 +117,7 @@ class Chat extends Component {
 
 }
 
-export default Chat
+export default compose(
+  graphql(MSG_QUERY, { name: 'messageQuery' }),
+  graphql(CREATE_MSG_QUERY, { name: 'createMessageMutation' })
+)(Chat)

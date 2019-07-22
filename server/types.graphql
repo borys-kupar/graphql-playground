@@ -1,0 +1,15 @@
+type Person @model {
+  id: ID! @isUnique    # required system-field (read-only)
+  createdAt: DateTime! # optional system-field (read-only)
+  updatedAt: DateTime! # optional system-field (read-only)
+  name: String!
+  messages: [Message!]! @relation(name: "UserMessages")
+}
+
+type Message @model {
+  id: ID! @isUnique    # required system-field (read-only)
+  createdAt: DateTime! # optional system-field (read-only)
+  updatedAt: DateTime! # optional system-field (read-only)
+  text: String!
+  sentBy: Person! @relation(name: "UserMessages")
+}

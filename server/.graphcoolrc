@@ -1,0 +1,3 @@
+targets:
+  graphql-borys: shared-eu-west-1/cj9stxa4j8qpz0164o8a9yssi
+  default: graphql-borys
